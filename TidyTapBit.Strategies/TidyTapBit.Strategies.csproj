@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TidyTapBit.ApiIntegration\TidyTapBit.ApiIntegration.csproj" />
     <ProjectReference Include="..\TidyTapBit.Core\TidyTapBit.Core.csproj" />
   </ItemGroup>
 

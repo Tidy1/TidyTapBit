@@ -11,6 +11,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TidyTapBit.StrategyExecutor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TidyTapBit.Strategies", "TidyTapBit.Strategies\TidyTapBit.Strategies.csproj", "{E3A86620-CE79-4A3E-8625-F47048E1FCA8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TidyTapBit.Test", "TidyTapBit.Test\TidyTapBit.Test.csproj", "{3341E282-C2CB-4762-A3A9-3BFF1DC82335}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TidyTapBit.Website", "TidyTapBit.Website\TidyTapBit.Website.csproj", "{0E77B2E7-65C4-4005-A47A-8A422616411A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +37,14 @@ Global
 		{E3A86620-CE79-4A3E-8625-F47048E1FCA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3A86620-CE79-4A3E-8625-F47048E1FCA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3A86620-CE79-4A3E-8625-F47048E1FCA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3341E282-C2CB-4762-A3A9-3BFF1DC82335}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3341E282-C2CB-4762-A3A9-3BFF1DC82335}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3341E282-C2CB-4762-A3A9-3BFF1DC82335}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3341E282-C2CB-4762-A3A9-3BFF1DC82335}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E77B2E7-65C4-4005-A47A-8A422616411A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E77B2E7-65C4-4005-A47A-8A422616411A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E77B2E7-65C4-4005-A47A-8A422616411A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E77B2E7-65C4-4005-A47A-8A422616411A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
