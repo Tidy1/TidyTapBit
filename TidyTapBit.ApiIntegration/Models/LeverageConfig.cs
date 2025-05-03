@@ -1,4 +1,4 @@
-﻿namespace TidyTapBit.ApiIntegration.Interfaces
+﻿namespace TidyTrader.ApiIntegration.Models
 {
     public class LeverageConfig
     {

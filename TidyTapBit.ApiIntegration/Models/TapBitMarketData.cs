@@ -5,9 +5,9 @@ using RestSharp;
 using System.Security.Cryptography;
 using System.Text;
 
-using TidyTapBit.ApiIntegration.Interfaces;
+using TidyTrader.ApiIntegration.Interfaces;
 
-namespace TidyTapBit.ApiIntegration.Models
+namespace TidyTrader.ApiIntegration.Models
 {
     public class TapBitMarketData : IMarketData
     {

@@ -1,4 +1,4 @@
-﻿namespace TidyTapBit.Strategies.Models
+﻿namespace TidyTrader.Strategies.Models
 {
     public class MeanReversionStrategy
     {

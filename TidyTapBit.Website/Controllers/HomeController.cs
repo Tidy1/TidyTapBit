@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 using TidyTapBit.Website.Models;
 
-namespace TidyTapBit.Website.Controllers
+namespace TidyTrader.Website.Controllers
 {
     public class HomeController : Controller
     {

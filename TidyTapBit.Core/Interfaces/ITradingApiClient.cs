@@ -1,6 +1,6 @@
-﻿using TidyTapBit.Core.Models;
+﻿using TidyTrader.Core.Models;
 
-namespace TidyTapBit.Core.Interfaces
+namespace TidyTrader.Core.Interfaces
 {
     public interface ITradingApiClient
     {

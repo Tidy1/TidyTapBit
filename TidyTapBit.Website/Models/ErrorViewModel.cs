@@ -1,4 +1,4 @@
-namespace TidyTapBit.Website.Models
+namespace TidyTrader.Website.Models
 {
     public class ErrorViewModel
     {

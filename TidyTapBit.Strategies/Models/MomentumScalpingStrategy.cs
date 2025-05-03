@@ -1,7 +1,8 @@
-﻿using TidyTapBit.ApiIntegration.Interfaces;
-using TidyTapBit.Strategies.Interfaces;
+﻿using TidyTapBit.Strategies.Interfaces;
 
-namespace TidyTapBit.Strategies.Models
+using TidyTrader.ApiIntegration.Interfaces;
+
+namespace TidyTrader.Strategies.Models
 {
     public class MomentumScalpingStrategy
     {

@@ -2,10 +2,10 @@
 
 using RestSharp;
 
-using TidyTapBit.Core.Interfaces;
-using TidyTapBit.Core.Models;
+using TidyTrader.Core.Interfaces;
+using TidyTrader.Core.Models;
 
-namespace TidyTapBit.ApiIntegration.Models
+namespace TidyTrader.ApiIntegration.Models
 {
     public class TapBitApiClient : ITradingApiClient
     {
@@ -83,7 +83,7 @@ namespace TidyTapBit.ApiIntegration.Models
         }
 
 
-        private async Task<string> ExecuteRequestAsync(string endpoint, RestSharp.Method method)
+        private async Task<string> ExecuteRequestAsync(string endpoint, Method method)
         {
             var request = new RestRequest(endpoint, method);
             var response = await _client.ExecuteAsync(request);

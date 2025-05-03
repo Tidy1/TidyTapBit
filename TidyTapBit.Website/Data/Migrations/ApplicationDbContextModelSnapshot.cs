@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 using System;
 
-using TidyTapBit.Website.Data;
+using TidyTrader.Website.Data;
 
 namespace TidyTapBit.Website.Data.Migrations
 {

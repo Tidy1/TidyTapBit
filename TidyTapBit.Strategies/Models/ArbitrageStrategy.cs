@@ -1,7 +1,8 @@
-﻿using TidyTapBit.Core.Interfaces;
-using TidyTapBit.Core.Models;
+﻿using TidyTapBit.Core.Models;
 
-namespace TidyTapBit.Strategies.Models
+using TidyTrader.Core.Interfaces;
+
+namespace TidyTrader.Strategies.Models
 {
     public class ArbitrageStrategy
     {

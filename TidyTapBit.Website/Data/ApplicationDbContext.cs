@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace TidyTapBit.Website.Data
+namespace TidyTrader.Website.Data
 {
     public class ApplicationDbContext : IdentityDbContext
     {

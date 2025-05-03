@@ -1,4 +1,4 @@
-﻿namespace TidyTapBit.Core.Models
+﻿namespace TidyTrader.Core.Models
 {
     public class SpotTradeOrder : TradeOrder
     {

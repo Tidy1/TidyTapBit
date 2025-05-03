@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-using TidyTapBit.ApiIntegration.Models;
-using TidyTapBit.Website.Data;
-using TidyTapBit.Website.Services;
+using TidyTrader.ApiIntegration.Models;
+using TidyTrader.Website.Data;
+using TidyTrader.Website.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

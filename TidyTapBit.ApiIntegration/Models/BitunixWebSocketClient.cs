@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Net.WebSockets;
 
-namespace TidyTapBit.ApiIntegration.Models
+namespace TidyTrader.ApiIntegration.Models
 {
     public class BitunixWebSocketClient
     {
@@ -64,7 +64,7 @@ namespace TidyTapBit.ApiIntegration.Models
             var subscribeMessage = new
             {
                 op = "subscribe",
-                args = subscriptions.Select(sub => new { symbol = sub.symbol, ch = sub.channel }).ToArray()
+                args = subscriptions.Select(sub => new { sub.symbol, ch = sub.channel }).ToArray()
             };
 
             await SendMessageAsync(subscribeMessage);
@@ -75,7 +75,7 @@ namespace TidyTapBit.ApiIntegration.Models
             var unsubscribeMessage = new
             {
                 op = "unsubscribe",
-                args = subscriptions.Select(sub => new { symbol = sub.symbol, ch = sub.channel }).ToArray()
+                args = subscriptions.Select(sub => new { sub.symbol, ch = sub.channel }).ToArray()
             };
 
             await SendMessageAsync(unsubscribeMessage);

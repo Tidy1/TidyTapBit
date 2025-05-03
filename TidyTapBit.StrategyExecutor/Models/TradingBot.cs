@@ -1,7 +1,7 @@
-﻿using TidyTapBit.Core.Interfaces;
-using TidyTapBit.Core.Models;
+﻿using TidyTrader.Core.Interfaces;
+using TidyTrader.Core.Models;
 
-namespace TidyTapBit.StrategyExecutor.Models
+namespace TidyTrader.StrategyExecutor.Models
 {
     public class TradingBot
     {
@@ -28,7 +28,7 @@ namespace TidyTapBit.StrategyExecutor.Models
             while (true)
             {
                 var currentPrice = await GetMarketPriceAsync(symbol);
-                var priceChangePercentage = ((currentPrice - initialPrice) / initialPrice) * 100;
+                var priceChangePercentage = (currentPrice - initialPrice) / initialPrice * 100;
 
                 Console.WriteLine($"Current price: {currentPrice}, Change: {priceChangePercentage}%");
 

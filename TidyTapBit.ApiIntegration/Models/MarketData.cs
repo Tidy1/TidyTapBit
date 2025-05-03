@@ -1,4 +1,6 @@
-﻿namespace TidyTapBit.ApiIntegration.Interfaces
+﻿using TidyTrader.ApiIntegration.Interfaces;
+
+namespace TidyTrader.ApiIntegration.Models
 {
     public class MarketData : IMarketData
     {

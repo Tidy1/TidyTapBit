@@ -1,7 +1,7 @@
-﻿using TidyTapBit.Core;
+﻿
 using RestSharp;
 
-namespace TidyTapBit.ApiIntegration.Models
+namespace TidyTrader.ApiIntegration.Models
 {
     public class TapbitWebSocketClient
     {

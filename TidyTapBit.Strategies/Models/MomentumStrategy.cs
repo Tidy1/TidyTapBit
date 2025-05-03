@@ -1,4 +1,4 @@
-﻿namespace TidyTapBit.Strategies.Models
+﻿namespace TidyTrader.Strategies.Models
 {
     public class MomentumStrategy
     {
@@ -37,7 +37,7 @@
         public string GenerateRSIMomentumSignal(decimal rsi, decimal threshold)
         {
             if (rsi > threshold) return "Buy";
-            if (rsi < (100 - threshold)) return "Sell";
+            if (rsi < 100 - threshold) return "Sell";
             return "Hold";
         }
 

@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TidyTapBit.ApiIntegration\TidyTapBit.ApiIntegration.csproj" />
+    <ProjectReference Include="..\TidyTapBit.ApiIntegration\TidyTrader.ApiIntegration.csproj" />
   </ItemGroup>
 
 </Project>

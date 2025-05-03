@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TidyTapBit.Strategies.Interfaces
+namespace TidyTrader.Strategies.Interfaces
 {
     public interface IMarketDataProvider
     {

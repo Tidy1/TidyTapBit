@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TidyTapBit.Core.Models
+namespace TidyTrader.Core.Models
 {
     public class TradeOrder
     {

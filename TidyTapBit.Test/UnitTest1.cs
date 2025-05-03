@@ -1,8 +1,8 @@
 using System.Security.Cryptography.X509Certificates;
 
-using TidyTapBit.ApiIntegration.Models;
+using TidyTrader.ApiIntegration.Models;
 
-namespace TidyTapBit.Test
+namespace TidyTrader.Test
 {
     public class BitunixApiClientTests
     {

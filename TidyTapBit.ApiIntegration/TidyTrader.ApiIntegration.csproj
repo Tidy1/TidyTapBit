@@ -7,8 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TidyTapBit.ApiIntegration\TidyTapBit.ApiIntegration.csproj" />
-    <ProjectReference Include="..\TidyTapBit.Core\TidyTapBit.Core.csproj" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="RestSharp" Version="112.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TidyTapBit.Core\TidyTrader.Core.csproj" />
   </ItemGroup>
 
 </Project>

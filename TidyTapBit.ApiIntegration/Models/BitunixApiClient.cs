@@ -3,9 +3,9 @@
 using System.Security.Cryptography;
 using System.Text;
 
-using TidyTapBit.ApiIntegration.Interfaces;
+using TidyTrader.ApiIntegration.Interfaces;
 
-namespace TidyTapBit.ApiIntegration.Models
+namespace TidyTrader.ApiIntegration.Models
 {
     public class BitunixApiClient : IBitunixApiClient
     {
@@ -305,14 +305,31 @@ namespace TidyTapBit.ApiIntegration.Models
             return await SendRequestAsync("POST", "/api/v1/futures/tpsl/place_order", body);
         }
 
-        private string GenerateSignature(string timestamp, string nonce, string method, string path, string body)
+        private string GenerateSignature(string timestamp, string nonce, string method, string path, string body, string queryParams = "")
         {
-            string preHash = timestamp + nonce + method.ToUpper() + path + body;
-            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiSecret)))
+            // Step 1: Construct the digest input
+            string digestInput = nonce + timestamp + _apiKey + queryParams + body;
+
+            // Step 2: Generate the first SHA256 hash (digest)
+            string digest;
+            using (var sha256 = SHA256.Create())
             {
-                byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(preHash));
-                return BitConverter.ToString(hash).Replace("-", "").ToLower();
+                byte[] digestBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(digestInput));
+                digest = BitConverter.ToString(digestBytes).Replace("-", "").ToLower();
             }
+
+            // Step 3: Construct the sign input by appending the secret key
+            string signInput = digest + _apiSecret;
+
+            // Step 4: Generate the second SHA256 hash (sign)
+            string sign;
+            using (var sha256 = SHA256.Create())
+            {
+                byte[] signBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(signInput));
+                sign = BitConverter.ToString(signBytes).Replace("-", "").ToLower();
+            }
+
+            return sign;
         }
 
         private async Task<string> SendRequestAsync(string method, string path, object body = null)
@@ -320,22 +337,41 @@ namespace TidyTapBit.ApiIntegration.Models
             var client = new RestClient(_baseUrl);
             var request = new RestRequest(path, method == "GET" ? Method.Get : Method.Post);
 
+            // Generate timestamp and nonce
             string timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
             string nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
+
+            // Serialize the body to JSON if it exists
             string bodyJson = body != null ? Newtonsoft.Json.JsonConvert.SerializeObject(body) : "";
+
+            // Generate the signature
             string signature = GenerateSignature(timestamp, nonce, method, path, bodyJson);
 
+            // Add required headers
             request.AddHeader("api-key", _apiKey);
-            request.AddHeader("nonce", nonce);
-            request.AddHeader("timestamp", timestamp);
             request.AddHeader("sign", signature);
+            request.AddHeader("nonce", nonce);
+            request.AddHeader("timestamp", timestamp);            
+            request.AddHeader("language", "en-US");
             request.AddHeader("Content-Type", "application/json");
 
+            // Add the body to the request if it exists
             if (body != null)
+            {
                 request.AddJsonBody(bodyJson);
+            }
 
+            // Execute the request and handle the response
             var response = await client.ExecuteAsync(request);
+
+            // Check for HTTP errors
+            if (!response.IsSuccessful)
+            {
+                throw new HttpRequestException($"Request failed with status code {response.StatusCode}: {response.Content}");
+            }
+
             return response.Content;
         }
+
     }
 }

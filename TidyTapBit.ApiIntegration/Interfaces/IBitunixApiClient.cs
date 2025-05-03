@@ -1,4 +1,4 @@
-﻿namespace TidyTapBit.ApiIntegration.Interfaces
+﻿namespace TidyTrader.ApiIntegration.Interfaces
 {
     public interface IBitunixApiClient
     {

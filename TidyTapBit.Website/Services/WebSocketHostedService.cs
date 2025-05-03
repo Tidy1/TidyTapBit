@@ -1,6 +1,6 @@
-﻿using TidyTapBit.ApiIntegration.Models;
+﻿using TidyTrader.ApiIntegration.Models;
 
-namespace TidyTapBit.Website.Services
+namespace TidyTrader.Website.Services
 {
     public class WebSocketHostedService : IHostedService
     {
