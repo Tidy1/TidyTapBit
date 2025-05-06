@@ -35,8 +35,8 @@ namespace TidyTrader.Test
         public async Task Test_GetAccountInfoAsync()
         {
             string marginCoin = "BTC"; // Update with the correct margin coin
-            string response = await _apiClient.GetAccountInfoAsync(marginCoin);
-            Assert.False(string.IsNullOrEmpty(response), "Account info API response should not be empty");
+            var response = await _apiClient.GetAccountInfoAsync(marginCoin);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Account info API response should not be empty");
             Console.WriteLine(response);
         }
 

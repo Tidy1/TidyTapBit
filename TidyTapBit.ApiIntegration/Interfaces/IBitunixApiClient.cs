@@ -1,11 +1,13 @@
-﻿namespace TidyTrader.ApiIntegration.Interfaces
+﻿using RestSharp;
+
+namespace TidyTrader.ApiIntegration.Interfaces
 {
     public interface IBitunixApiClient
     {
         Task<string> CancelAllOrdersAsync(string symbol); // New method
         Task<string> CancelOrdersAsync(string symbol, string[] orderIds); // Ne
         Task<string> CancelTpSlOrderAsync(string symbol, string orderId);
-        Task<string> GetAccountInfoAsync(string marginCoin);
+        Task<RestResponse> GetAccountInfoAsync(string marginCoin);
         Task<string> GetFundingRateAsync(string symbol);
         Task<string> GetHistoryPositionsAsync(string symbol, int limit);
         Task<string> GetHistoryTpSlOrderAsync(string symbol);
@@ -16,7 +18,7 @@
         Task<string> GetPendingPositionsAsync(string symbol);
         Task<string> GetPendingTpSlOrderAsync(string symbol);
         Task<string> GetPositionTiersAsync(string symbol);
-        Task<string> GetServerTimeAsync();      
+        Task<string> GetServerTimeAsync();
         Task<string> GetTradingPairsAsync();
         Task<string> ModifyPositionTpSlOrderAsync(string symbol, string orderId, decimal stopLoss, decimal takeProfit);
         Task<string> ModifyTpSlOrderAsync(string symbol, string orderId, decimal stopLoss, decimal takeProfit);
