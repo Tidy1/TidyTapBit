@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Net.WebSockets;
+using Newtonsoft.Json.Linq;
 
 namespace TidyTrader.ApiIntegration.Models
 {
@@ -11,6 +12,9 @@ namespace TidyTrader.ApiIntegration.Models
         private readonly string _apiSecret;
         public readonly string _baseUrl;
         private ClientWebSocket _webSocket;
+        public WebSocketState WebSocketState => _webSocket?.State ?? WebSocketState.None;
+
+        public event Action<List<BitunixBalanceData>> OnBalanceUpdate;
 
         public BitunixWebSocketClient(string apiKey, string apiSecret, string baseUrl)
         {
@@ -21,13 +25,17 @@ namespace TidyTrader.ApiIntegration.Models
 
         private string GenerateSignature(string timestamp, string nonce)
         {
-            string preHash = timestamp + nonce;
-            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiSecret)))
+            string preHash = nonce + timestamp + _apiKey;
+            using (SHA256 sha256 = SHA256.Create())
             {
-                byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(preHash));
-                return BitConverter.ToString(hash).Replace("-", "").ToLower();
+                byte[] digest = sha256.ComputeHash(Encoding.UTF8.GetBytes(preHash));
+                string firstHash = BitConverter.ToString(digest).Replace("-", "").ToLower();
+
+                byte[] final = sha256.ComputeHash(Encoding.UTF8.GetBytes(firstHash + _apiSecret));
+                return BitConverter.ToString(final).Replace("-", "").ToLower();
             }
         }
+
 
         public async Task ConnectAsync()
         {
@@ -47,12 +55,14 @@ namespace TidyTrader.ApiIntegration.Models
             var authMessage = new
             {
                 op = "login",
-                args = new
+                args = new[]
                 {
-                    apiKey = _apiKey,
-                    timestamp,
-                    nonce,
-                    sign = signature
+                    new {
+                        apiKey = _apiKey,
+                        timestamp,
+                        nonce,
+                        sign = signature
+                    }
                 }
             };
 
@@ -93,23 +103,85 @@ namespace TidyTrader.ApiIntegration.Models
             byte[] messageBytes = Encoding.UTF8.GetBytes(messageJson);
             await _webSocket.SendAsync(new ArraySegment<byte>(messageBytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
-
         private async Task ReceiveMessagesAsync()
         {
-            var buffer = new byte[1024 * 4];
+            var buffer = new byte[8192];
+
             while (_webSocket.State == WebSocketState.Open)
             {
                 var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                    break;
                 }
-                else
-                {
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    //Console.WriteLine("Received: " + message);
-                }
+
+                var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                HandleMessage(message);
             }
         }
+
+        private void HandleMessage(string message)
+        {
+            try
+            {
+                var jObject = JObject.Parse(message);
+                var channel = jObject["ch"]?.ToString();
+
+                switch (channel)
+                {
+                    case "balance":
+                        var balanceList = jObject["data"]?.ToObject<List<BitunixBalanceData>>();
+                        OnBalanceUpdate?.Invoke(balanceList);
+                        break;
+                        // Add cases for other channels like position, order, etc.
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling message: {ex.Message}\n{message}");
+            }
+        }
+
+
+        public async Task SendPingAsync()
+        {
+            var pingMessage = new
+            {
+                op = "ping",
+                ping = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+
+            await SendMessageAsync(pingMessage);
+        }
+
+
+        public async Task SubscribeToBalanceAsync()
+        {
+            var subscribeMessage = new
+            {
+                op = "subscribe",
+                args = new[]
+                {
+            new { ch = "balance" }
+        }
+            };
+
+            await SendMessageAsync(subscribeMessage);
+        }
+
+    }
+
+    public class BitunixBalanceData
+    {
+        public string Coin { get; set; }
+        public string Available { get; set; }
+        public string Frozen { get; set; }
+        public string IsolationFrozen { get; set; }
+        public string CrossFrozen { get; set; }
+        public string Margin { get; set; }
+        public string IsolationMargin { get; set; }
+        public string CrossMargin { get; set; }
+        public string ExpMoney { get; set; }
     }
 }

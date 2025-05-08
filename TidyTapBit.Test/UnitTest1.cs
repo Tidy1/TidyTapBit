@@ -18,16 +18,16 @@ namespace TidyTrader.Test
         [Fact]
         public async Task Test_GetMarketTickersAsync()
         {
-            string response = await _apiClient.GetMarketTickersAsync();
-            Assert.False(string.IsNullOrEmpty(response), "Market tickers API response should not be empty");
+            var response = await _apiClient.GetTickersAsync();
+            Assert.False(string.IsNullOrEmpty(response.Content), "Market tickers API response should not be empty");
             Console.WriteLine(response);
         }
 
         [Fact]
         public async Task Test_GetTradingPairsAsync()
         {
-            string response = await _apiClient.GetTradingPairsAsync();
-            Assert.False(string.IsNullOrEmpty(response), "Trading pairs API response should not be empty");
+            var response = await _apiClient.GetTradingPairsAsync();
+            Assert.False(string.IsNullOrEmpty(response.Content), "Trading pairs API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -46,29 +46,30 @@ namespace TidyTrader.Test
         {
             string symbol = "BTCUSDT"; // Update with the correct margin coin
             var limit = "max";
-            string response = await _apiClient.GetMarketDepthAsync(symbol,limit);
-            Assert.False(string.IsNullOrEmpty(response), "Account info API response should not be empty");
+            var response = await _apiClient.GetMarketDepthAsync(symbol, limit);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Account info API response should not be empty");
             Console.WriteLine(response);
         }
 
-                
+
         [Fact]
         public async Task Test_PlaceFuturesOrderAsync()
         {
             string symbol = "BTCUSDT";
-            decimal qty = 0.01m;
+            var qty = "0.01";
             string side = "buy";
             string orderType = "limit";
-            int leverage = 20;
-            decimal? price = 30000m;
+            var leverage = "0.01";
+            var price = "30000";
             string clientOrderId = "testOrder123";
             string timeInForce = "GTC";
+            string positionId = "";
             bool? reduceOnly = false;
             bool? postOnly = false;
             string positionSide = "LONG";
 
-            string response = await _apiClient.PlaceFuturesOrderAsync(symbol, qty, side, orderType, leverage, price, clientOrderId, timeInForce, reduceOnly, postOnly, positionSide);
-            Assert.False(string.IsNullOrEmpty(response), "Futures order API response should not be empty");
+            var response = await _apiClient.PlaceOrderAsync(symbol, qty, side, orderType, leverage, price, clientOrderId, timeInForce, positionId, postOnly, positionSide);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Futures order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -76,8 +77,8 @@ namespace TidyTrader.Test
         public async Task Test_GetFundingRateAsync() // New test
         {
             string symbol = "BTCUSDT";
-            string response = await _apiClient.GetFundingRateAsync(symbol);
-            Assert.False(string.IsNullOrEmpty(response), "Funding rate API response should not be empty");
+            var response = await _apiClient.GetFundingRateAsync(symbol);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Funding rate API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -87,8 +88,8 @@ namespace TidyTrader.Test
             string symbol = "BTCUSDT";
             string interval = "1m";
             int limit = 100;
-            string response = await _apiClient.GetKlineAsync(symbol, interval, limit);
-            Assert.False(string.IsNullOrEmpty(response), "Kline API response should not be empty");
+            var response = await _apiClient.GetKlineAsync(symbol, interval, limit);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Kline API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -96,9 +97,9 @@ namespace TidyTrader.Test
         public async Task Test_GetHistoryPositionsAsync() // New test
         {
             string symbol = "BTCUSDT";
-            int limit = 100;
-            string response = await _apiClient.GetHistoryPositionsAsync(symbol, limit);
-            Assert.False(string.IsNullOrEmpty(response), "History positions API response should not be empty");
+            var positionId = "100";
+            var response = await _apiClient.GetHistoryPositionsAsync(symbol, positionId);
+            Assert.False(string.IsNullOrEmpty(response.Content), "History positions API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -106,8 +107,8 @@ namespace TidyTrader.Test
         public async Task Test_GetPendingPositionsAsync() // New test
         {
             string symbol = "BTCUSDT";
-            string response = await _apiClient.GetPendingPositionsAsync(symbol);
-            Assert.False(string.IsNullOrEmpty(response), "Pending positions API response should not be empty");
+            var response = await _apiClient.GetPendingPositionsAsync(symbol);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Pending positions API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -115,8 +116,8 @@ namespace TidyTrader.Test
         public async Task Test_GetPositionTiersAsync() // New test
         {
             string symbol = "BTCUSDT";
-            string response = await _apiClient.GetPositionTiersAsync(symbol);
-            Assert.False(string.IsNullOrEmpty(response), "Position tiers API response should not be empty");
+            var response = await _apiClient.GetPositionTiersAsync(symbol);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Position tiers API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -125,8 +126,8 @@ namespace TidyTrader.Test
         {
             string symbol = "BTCUSDT";
             string orderId = "12345";
-            string response = await _apiClient.CancelTpSlOrderAsync(symbol, orderId);
-            Assert.False(string.IsNullOrEmpty(response), "Cancel TP/SL order API response should not be empty");
+            var response = await _apiClient.CancelTpSlOrderAsync(symbol, orderId);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Cancel TP/SL order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -134,8 +135,8 @@ namespace TidyTrader.Test
         public async Task Test_GetHistoryTpSlOrderAsync() // New test
         {
             string symbol = "BTCUSDT";
-            string response = await _apiClient.GetHistoryTpSlOrderAsync(symbol);
-            Assert.False(string.IsNullOrEmpty(response), "History TP/SL order API response should not be empty");
+            var response = await _apiClient.GetTpSlOrderHistoryAsync(symbol);
+            Assert.False(string.IsNullOrEmpty(response.Content), "History TP/SL order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -143,8 +144,8 @@ namespace TidyTrader.Test
         public async Task Test_GetPendingTpSlOrderAsync() // New test
         {
             string symbol = "BTCUSDT";
-            string response = await _apiClient.GetPendingTpSlOrderAsync(symbol);
-            Assert.False(string.IsNullOrEmpty(response), "Pending TP/SL order API response should not be empty");
+            var response = await _apiClient.GetPendingTpSlOrdersAsync(symbol);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Pending TP/SL order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -153,10 +154,12 @@ namespace TidyTrader.Test
         {
             string symbol = "BTCUSDT";
             string orderId = "12345";
-            decimal stopLoss = 30000m;
-            decimal takeProfit = 40000m;
-            string response = await _apiClient.ModifyPositionTpSlOrderAsync(symbol, orderId, stopLoss, takeProfit);
-            Assert.False(string.IsNullOrEmpty(response), "Modify position TP/SL order API response should not be empty");
+
+            var tpStopType = "12345";
+            var tpPrice = "Sld";
+
+            var response = await _apiClient.ModifyPositionTpSlOrderAsync(symbol, orderId, tpPrice, tpStopType);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Modify position TP/SL order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -165,10 +168,10 @@ namespace TidyTrader.Test
         {
             string symbol = "BTCUSDT";
             string orderId = "12345";
-            decimal stopLoss = 30000m;
-            decimal takeProfit = 40000m;
-            string response = await _apiClient.ModifyTpSlOrderAsync(symbol, orderId, stopLoss, takeProfit);
-            Assert.False(string.IsNullOrEmpty(response), "Modify TP/SL order API response should not be empty");
+            var tpStopType = "12345";
+            var tpOrderType = "Sld";
+            var response = await _apiClient.ModifyTpSlOrderAsync(symbol, orderId, tpStopType, tpOrderType);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Modify TP/SL order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -176,10 +179,10 @@ namespace TidyTrader.Test
         public async Task Test_PlacePositionTpSlOrderAsync() // New test
         {
             string symbol = "BTCUSDT";
-            decimal stopLoss = 30000m;
-            decimal takeProfit = 40000m;
-            string response = await _apiClient.PlacePositionTpSlOrderAsync(symbol, stopLoss, takeProfit);
-            Assert.False(string.IsNullOrEmpty(response), "Place position TP/SL order API response should not be empty");
+            var positionId = "12345";
+            var tpPrice = "";
+            var response = await _apiClient.PlacePositionTpSlOrderAsync(symbol, positionId, tpPrice);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Place position TP/SL order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -187,10 +190,11 @@ namespace TidyTrader.Test
         public async Task Test_PlaceTpSlOrderAsync() // New test
         {
             string symbol = "BTCUSDT";
-            decimal stopLoss = 30000m;
-            decimal takeProfit = 40000m;
-            string response = await _apiClient.PlaceTpSlOrderAsync(symbol, stopLoss, takeProfit);
-            Assert.False(string.IsNullOrEmpty(response), "Place TP/SL order API response should not be empty");
+            var positionId = "12345";
+            var tpPrice = "";
+
+            var response = await _apiClient.PlaceTpSlOrderAsync(symbol, positionId, tpPrice);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Place TP/SL order API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -198,8 +202,8 @@ namespace TidyTrader.Test
         public async Task Test_CancelAllOrdersAsync() // New test
         {
             string symbol = "BTCUSDT";
-            string response = await _apiClient.CancelAllOrdersAsync(symbol);
-            Assert.False(string.IsNullOrEmpty(response), "Cancel all orders API response should not be empty");
+            var response = await _apiClient.CancelAllOrdersAsync(symbol);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Cancel all orders API response should not be empty");
             Console.WriteLine(response);
         }
 
@@ -208,9 +212,30 @@ namespace TidyTrader.Test
         {
             string symbol = "BTCUSDT";
             string[] orderIds = { "12345", "67890" };
-            string response = await _apiClient.CancelOrdersAsync(symbol, orderIds);
-            Assert.False(string.IsNullOrEmpty(response), "Cancel orders API response should not be empty");
+            var response = await _apiClient.CancelOrdersAsync(symbol, orderIds);
+            Assert.False(string.IsNullOrEmpty(response.Content), "Cancel orders API response should not be empty");
             Console.WriteLine(response);
+        }
+
+        [Fact]
+        public async Task WebSocket_ShouldConnect_And_Subscribe()
+        {
+            string apiKey = "dd9ac82aaedec750922f3e6fc5438816";
+            string apiSecret = "4ac673c254b5affa65549a2ed5f25c76";
+            string baseUrl = "wss://fapi.bitunix.com/public/";
+
+            var client = new BitunixWebSocketClient(apiKey, apiSecret, baseUrl);
+
+            await client.ConnectAsync();
+
+            Assert.True(client.WebSocketState == System.Net.WebSockets.WebSocketState.Open);
+
+            await client.SubscribeAsync(("BTCUSDT", "depth_books"));
+
+            // Wait a few seconds to receive data
+            await Task.Delay(3000);
+
+            await client.CloseAsync();
         }
     }
 }

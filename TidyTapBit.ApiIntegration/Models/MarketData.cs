@@ -1,4 +1,6 @@
-﻿using TidyTrader.ApiIntegration.Interfaces;
+﻿using RestSharp;
+
+using TidyTrader.ApiIntegration.Interfaces;
 
 namespace TidyTrader.ApiIntegration.Models
 {
@@ -32,18 +34,18 @@ namespace TidyTrader.ApiIntegration.Models
             return random.Next(_leverageConfig.MinLeverage, _leverageConfig.MaxLeverage + 1);
         }
 
-        public async Task<string> PlaceIsolatedTradeAsync(string symbol, decimal qty, string side, string orderType)
+        public async Task<RestResponse> PlaceIsolatedTradeAsync(string symbol, string qty, string side, string orderType)
         {
-            int leverage = DetermineLeverage();
-            return await _bitunixClient.PlaceFuturesOrderAsync(symbol, qty, side, orderType, leverage);
+            var leverage = DetermineLeverage().ToString();
+            return await _bitunixClient.PlaceOrderAsync(symbol, qty, side, orderType, leverage);
         }
 
-        public async Task<DateTime> GetServerTimeAsync()
-        {
-            var response = await _bitunixClient.GetServerTimeAsync();
-            // Parse the response to get the server time
-            return DateTime.Parse(response);
-        }
+        //public async Task<DateTime> GetServerTimeAsync()
+        //{
+        //    var response = await _bitunixClient.GetServerTimeAsync();
+        //    // Parse the response to get the server time
+        //    return DateTime.Parse(response);
+        //}
 
         public async Task<string> GetExchangeInfoAsync()
         {
@@ -51,41 +53,31 @@ namespace TidyTrader.ApiIntegration.Models
             //return await _bitunixClient.GetExchangeInfoAsync();
         }
 
-        public async Task<string> GetOrderBookAsync(string symbol, string limit)
+        public async Task<RestResponse> GetOrderBookAsync(string symbol, string limit)
         {
             return await _bitunixClient.GetMarketDepthAsync(symbol, limit);
         }
 
-        public async Task<string> GetKlineDataAsync(string symbol, string interval, string limit)
+        public async Task<RestResponse> GetKlineDataAsync(string symbol, string interval, string limit)
         {
-            return await _bitunixClient.GetKlineAsync(symbol, interval, 6);
+            return await _bitunixClient.GetKlineAsync(symbol, interval);
         }
 
-        public async Task<string> GetTickerAsync(string? symbol)
+        public async Task<RestResponse> GetTickerAsync(string? symbol)
         {
-            return await _bitunixClient.GetMarketTickersAsync(symbol);
+            return await _bitunixClient.GetTickersAsync(symbol);
         }
 
-        public async Task<string> GetTickerListAsync()
-        {           
-            return await _bitunixClient.GetMarketTickersAsync();
-        }
-
-        public async Task<string> GetFundingRateAsync(string symbol)
+        public async Task<RestResponse> GetFundingRateAsync(string symbol)
         {
             return await _bitunixClient.GetFundingRateAsync(symbol);
         }
-
-        public async Task<string> GetRecentTradesAsync(string? symbol = null, long? startTime = null, long? endTime = null, int? limit = null)
-        {            
-            return await _bitunixClient.GetHistoryTradesAsync(symbol,startTime,endTime,limit);
-        }
-
-        public decimal GetLivePrice(string symbol)
+        
+        public async Task<decimal> GetLivePrice(string symbol)
         {
-            var response = GetTickerAsync(symbol).Result;
+            var response = await GetTickerAsync(symbol);
             // Parse the response to get the live price
-            return ParsePriceFromResponse(response);
+            return ParsePriceFromResponse(response.Content);
         }
 
         public decimal GetMovingAverage(string symbol, string period)
@@ -94,21 +86,21 @@ namespace TidyTrader.ApiIntegration.Models
             // Calculate the moving average from the response
 
             var lim = int.TryParse(period, out int per) ? per : 0;
-            return CalculateMovingAverage(response, lim);
+            return CalculateMovingAverage(response.Content, lim);
         }
 
         public decimal GetOrderBookSpread(string symbol)
         {
             var response = GetOrderBookAsync(symbol, "5").Result;
             // Calculate the order book spread from the response
-            return CalculateOrderBookSpread(response);
+            return CalculateOrderBookSpread(response.Content);
         }
 
         public (decimal bidVolume, decimal askVolume) GetOrderBookVolumes(string symbol)
         {
             var response = GetOrderBookAsync(symbol, "4").Result;
             // Parse the response to get the bid and ask volumes
-            return ParseOrderBookVolumes(response);
+            return ParseOrderBookVolumes(response.Content);
         }
 
         private decimal ParsePriceFromResponse(string response)
@@ -137,6 +129,46 @@ namespace TidyTrader.ApiIntegration.Models
             // Implement the logic to parse the bid and ask volumes from the response
             // This is a placeholder implementation
             return (0m, 0m);
+        }
+
+        public Task<DateTime> GetServerTimeAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<string> IMarketData.GetOrderBookAsync(string symbol, string limit)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<string> IMarketData.GetKlineDataAsync(string symbol, string interval, string limit)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<string> IMarketData.GetTickerAsync(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> GetTickerListAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<string> IMarketData.GetFundingRateAsync(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> GetRecentTradesAsync(string? symbol = null, long? startTime = null, long? endTime = null, int? limit = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        decimal IMarketData.GetLivePrice(string symbol)
+        {
+            throw new NotImplementedException();
         }
     }
 }
