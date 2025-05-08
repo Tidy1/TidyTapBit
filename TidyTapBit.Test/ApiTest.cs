@@ -24,7 +24,7 @@ namespace TidyTrader.Tests.ApiIntegration
             string marginCoin = "USDT";
 
             // Act
-            var response = await _client.GetAccountInfoAsync(marginCoin);
+            var response = await _client.GetSingleAccountAsync(marginCoin);
 
             // Assert
             Assert.NotNull(response);   
