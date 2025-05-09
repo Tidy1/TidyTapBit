@@ -1,6 +1,7 @@
 ﻿using RestSharp;
 
 using TidyTrader.ApiIntegration.Models;
+using TidyTrader.ApiIntegration.Models.Responses.Market;
 
 namespace TidyTrader.ApiIntegration.Interfaces
 {
@@ -8,7 +9,7 @@ namespace TidyTrader.ApiIntegration.Interfaces
     {
         Task<string> GetExchangeInfoAsync();
         Task<string> GetFundingRateAsync(string symbol);
-        Task<string> GetKlineDataAsync(string symbol, string interval, string limit);
+        Task<KlineResponse> GetKlineDataAsync(string symbol, string interval, string limit);
         LeverageConfig GetLeverageConfig();
         Task<decimal> GetLivePriceAsync(string symbol);
         Task<decimal> GetMovingAverageAsync(string symbol, string interval, int period);

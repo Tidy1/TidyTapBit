@@ -1,6 +1,9 @@
 ﻿using RestSharp;
 using Newtonsoft.Json.Linq;
 using TidyTrader.ApiIntegration.Interfaces;
+using TidyTrader.ApiIntegration.Models.Responses.Market;
+using TidyTrader.ApiIntegration.Models.Responses.Trade;
+using Newtonsoft.Json;
 
 namespace TidyTrader.ApiIntegration.Models
 {
@@ -31,100 +34,106 @@ namespace TidyTrader.ApiIntegration.Models
 
         public async Task<string> GetExchangeInfoAsync() => "none";
 
-        public async Task<string> GetOrderBookAsync(string symbol, string limit)
+        public async Task<MarketDepthResponse> GetOrderBookAsync(string symbol, string limit)
         {
             var response = await _bitunixClient.GetMarketDepthAsync(symbol, limit);
-            return response.Content;
+            return response.Data;
         }
 
-        public async Task<string> GetKlineDataAsync(string symbol, string interval, string limit)
+        public async Task<KlineResponse> GetKlineDataAsync(string symbol, string interval, string limit)
         {
             var response = await _bitunixClient.GetKlineAsync(symbol, interval, null, null, int.Parse(limit), null);
-            return response.Content;
+            return response.Data;
         }
 
-        public async Task<string> GetTickerAsync(string symbol)
+        public async Task<TickerResponse> GetTickerAsync(string symbol)
         {
             var response = await _bitunixClient.GetTickersAsync(symbol);
-            return response.Content;
+            return response.Data;
         }
 
-        public async Task<string> GetFundingRateAsync(string symbol)
+        public async Task<FundingRateResponse> GetFundingRateAsync(string symbol)
         {
             var response = await _bitunixClient.GetFundingRateAsync(symbol);
-            return response.Content;
+            return response.Data;
         }
 
-        public async Task<string> GetTickerListAsync()
-        {
-            var response = await _bitunixClient.GetTickersAsync();
-            return response.Content;
-        }
 
-        public async Task<string> GetRecentTradesAsync(string? symbol = null, long? startTime = null, long? endTime = null, int? limit = null)
+        public async Task<GetTradeHistoryResponse> GetRecentTradesAsync(string? symbol = null, long? startTime = null, long? endTime = null, int? limit = null)
         {
             var response = await _bitunixClient.GetHistoryTradesAsync(symbol, null, null, startTime, endTime, null, limit);
-            return response.Content;
+            return response.Data;
         }
 
         public async Task<decimal> GetLivePriceAsync(string symbol)
         {
             var content = await GetTickerAsync(symbol);
-            var json = JToken.Parse(content);
+            
+            decimal.TryParse(content.Data.First().Last, out decimal result);
 
-            if (json is JArray arr && arr.Count > 0)
-                return decimal.Parse(arr[0]["last"].ToString());
-
-            return 0m;
+            return result;
         }
 
-        public async Task<decimal> GetMovingAverageAsync(string symbol, string interval, int period)
-        {
-            var content = await GetKlineDataAsync(symbol, interval, period.ToString());
-            var data = JArray.Parse(content);
-
-            if (data.Count < period) return 0m;
-
-            var sum = data.Take(period)
-                          .Select(kline => decimal.Parse(kline[4].ToString())) // close price
-                          .Sum();
-
-            return sum / period;
-        }
-
-        public async Task<decimal> GetOrderBookSpreadAsync(string symbol)
-        {
-            var content = await GetOrderBookAsync(symbol, "5");
-            var book = JObject.Parse(content);
-
-            var bestBid = decimal.Parse(book["bids"]?[0]?[0]?.ToString() ?? "0");
-            var bestAsk = decimal.Parse(book["asks"]?[0]?[0]?.ToString() ?? "0");
-
-            return bestAsk - bestBid;
-        }
-
-        public async Task<(decimal bidVolume, decimal askVolume)> GetOrderBookVolumesAsync(string symbol)
-        {
-            var content = await GetOrderBookAsync(symbol, "5");
-            var book = JObject.Parse(content);
-
-            decimal bidVolume = book["bids"]?
-                .Take(5)
-                .Sum(bid => decimal.Parse(bid[1]?.ToString() ?? "0")) ?? 0;
-
-            decimal askVolume = book["asks"]?
-                .Take(5)
-                .Sum(ask => decimal.Parse(ask[1]?.ToString() ?? "0")) ?? 0;
-
-            return (bidVolume, askVolume);
-        }
-
-        public async Task<RestResponse> PlaceIsolatedTradeAsync(string symbol, string qty, string side, string orderType)
-        {
-            var leverage = DetermineLeverage().ToString();
-            return await _bitunixClient.PlaceOrderAsync(symbol, qty, side, "OPEN", orderType);
-        }
+      
 
         public Task<DateTime> GetServerTimeAsync() => throw new NotImplementedException();
+
+        Task<string> IMarketData.GetFundingRateAsync(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<KlineResponse> GetKlineDataAsync(string symbol, string interval, string limit)
+        {
+            if (!int.TryParse(limit, out var parsedLimit))
+                throw new ArgumentException("Limit must be an integer", nameof(limit));
+
+            var response = await _bitunixClient.GetKlineAsync(symbol, interval, null, null, parsedLimit, null);
+
+            if (response.Data == null)
+                throw new Exception($"Failed to get kline data: {response.ErrorMessage ?? "Unknown error"}");
+
+            return response.Data;
+        }
+
+        public Task<decimal> GetMovingAverageAsync(string symbol, string interval, int period)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<string> IMarketData.GetOrderBookAsync(string symbol, string limit)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<decimal> GetOrderBookSpreadAsync(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(decimal bidVolume, decimal askVolume)> GetOrderBookVolumesAsync(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<string> IMarketData.GetRecentTradesAsync(string? symbol, long? startTime, long? endTime, int? limit)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<string> IMarketData.GetTickerAsync(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> GetTickerListAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<RestResponse> PlaceIsolatedTradeAsync(string symbol, string qty, string side, string orderType)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
