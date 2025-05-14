@@ -3,13 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TidyTrader.Core", "TidyTapBit.Core\TidyTrader.Core.csproj", "{B6974955-14D6-4392-A996-EE29838EACBC}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TidyTrader.ApiIntegration", "TidyTapBit.ApiIntegration\TidyTrader.ApiIntegration.csproj", "{671BE8E5-32FB-4E6D-9EEA-40A1E8E52513}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TidyTrader.StrategyExecutor", "TidyTapBit.StrategyExecutor\TidyTrader.StrategyExecutor.csproj", "{A8975DF9-C637-4A68-8A2C-A69D09DCF010}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TidyTrader.Strategies", "TidyTapBit.Strategies\TidyTrader.Strategies.csproj", "{E3A86620-CE79-4A3E-8625-F47048E1FCA8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TidyTrader.Test", "TidyTapBit.Test\TidyTrader.Test.csproj", "{3341E282-C2CB-4762-A3A9-3BFF1DC82335}"
 EndProject
@@ -21,22 +15,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B6974955-14D6-4392-A996-EE29838EACBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B6974955-14D6-4392-A996-EE29838EACBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B6974955-14D6-4392-A996-EE29838EACBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B6974955-14D6-4392-A996-EE29838EACBC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{671BE8E5-32FB-4E6D-9EEA-40A1E8E52513}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{671BE8E5-32FB-4E6D-9EEA-40A1E8E52513}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{671BE8E5-32FB-4E6D-9EEA-40A1E8E52513}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{671BE8E5-32FB-4E6D-9EEA-40A1E8E52513}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A8975DF9-C637-4A68-8A2C-A69D09DCF010}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A8975DF9-C637-4A68-8A2C-A69D09DCF010}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A8975DF9-C637-4A68-8A2C-A69D09DCF010}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A8975DF9-C637-4A68-8A2C-A69D09DCF010}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E3A86620-CE79-4A3E-8625-F47048E1FCA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E3A86620-CE79-4A3E-8625-F47048E1FCA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E3A86620-CE79-4A3E-8625-F47048E1FCA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E3A86620-CE79-4A3E-8625-F47048E1FCA8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3341E282-C2CB-4762-A3A9-3BFF1DC82335}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3341E282-C2CB-4762-A3A9-3BFF1DC82335}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3341E282-C2CB-4762-A3A9-3BFF1DC82335}.Release|Any CPU.ActiveCfg = Release|Any CPU

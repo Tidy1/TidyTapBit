@@ -12,8 +12,5 @@
     <PackageReference Include="Skender.Stock.Indicators" Version="2.6.1" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\TidyTapBit.Core\TidyTrader.Core.csproj" />
-  </ItemGroup>
 
 </Project>

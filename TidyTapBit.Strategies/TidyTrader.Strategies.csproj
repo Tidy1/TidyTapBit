@@ -8,7 +8,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TidyTapBit.ApiIntegration\TidyTrader.ApiIntegration.csproj" />
-    <ProjectReference Include="..\TidyTapBit.Core\TidyTrader.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+using TidyTrader.ApiIntegration.Interfaces;
 using TidyTrader.ApiIntegration.Models;
+using TidyTrader.Core.Models;
 using TidyTrader.Website.Data;
 using TidyTrader.Website.Services;
 
@@ -22,9 +24,12 @@ string apiKey = "dd9ac82aaedec750922f3e6fc5438816";
 string apiSecret = "4ac673c254b5affa65549a2ed5f25c76";
 
 
-builder.Services.AddSingleton<BitunixWebSocketClient>(sp => new BitunixWebSocketClient(apiKey, apiSecret, "wss://fapi.bitunix.com/public"));
-builder.Services.AddSingleton<BitunixWebSocketClient>(sp => new BitunixWebSocketClient(apiKey, apiSecret, "wss://fapi.bitunix.com/private"));
+// ApiIntegration
+builder.Services.AddSingleton<IBitunixApiClient>(sp =>  new BitunixApiClient(apiKey, apiSecret));
+builder.Services.AddSingleton<IMarketData>(sp => new MarketData(sp.GetRequiredService<IBitunixApiClient>(), /* leverageConfig */));
 
+// Core
+builder.Services.AddScoped<MarketService>();
 
 // Register the hosted service
 builder.Services.AddHostedService<WebSocketHostedService>();
