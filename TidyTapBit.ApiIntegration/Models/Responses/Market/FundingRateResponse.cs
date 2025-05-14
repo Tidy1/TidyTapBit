@@ -23,7 +23,7 @@ namespace TidyTrader.ApiIntegration.Models.Responses.Market
         public int Code { get; set; }
 
         [JsonProperty("data")]
-        public List<FundingRateItem> Data { get; set; }
+        public FundingRateItem Data { get; set; }
 
         [JsonProperty("msg")]
         public string Msg { get; set; }

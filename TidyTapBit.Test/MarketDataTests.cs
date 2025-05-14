@@ -8,58 +8,100 @@ namespace TidyTrader.Tests.ApiIntegration
 {
     public class MarketDataTests
     {
-        private const string apiKey = "dd9ac82aaedec750922f3e6fc5438816";
-        private const string apiSecret = "4ac673c254b5affa65549a2ed5f25c76";
-        private readonly IMarketData _marketData;
+        private readonly MarketData _marketData;
 
         public MarketDataTests()
         {
+            var apiKey = "dd9ac82aaedec750922f3e6fc5438816";
+            var apiSecret = "4ac673c254b5affa65549a2ed5f25c76";
+            var client = new BitunixApiClient(apiKey, apiSecret);
             var leverageConfig = new LeverageConfig(1,20);
-
-            var bitunixClient = new BitunixApiClient(apiKey, apiSecret);
-            _marketData = new MarketData(bitunixClient, leverageConfig);
+            _marketData = new MarketData(client, leverageConfig);
         }
 
         [Fact]
-        public async Task GetLivePrice_ShouldReturn_PositiveValue()
+        public async Task GetOrderBookAsync_Works()
         {
-            var price = await _marketData.GetLivePriceAsync("BTCUSDT");
-            Assert.True(price > 0, "Expected price to be greater than 0");
+            var result = await _marketData.GetOrderBookAsync("BTCUSDT", "max");
+            Assert.NotNull(result);
         }
 
         [Fact]
-        public async Task GetMovingAverage_ShouldReturn_Value()
+        public async Task GetKlineDataAsync_Works()
         {
-            var average = await _marketData.GetMovingAverageAsync("BTCUSDT", "1m", 5);
-            Assert.True(average > 0, "Expected moving average to be greater than 0");
+            var result = await _marketData.GetKlineDataAsync("BTCUSDT", "1m", "200");
+            Assert.NotNull(result);
         }
 
         [Fact]
-        public async Task GetOrderBookSpread_ShouldReturn_PositiveSpread()
+        public async Task GetTickerAsync_Works()
         {
-            var spread = await _marketData.GetOrderBookSpreadAsync("BTCUSDT");
-            Assert.True(spread >= 0, "Expected spread to be 0 or positive");
+            var result = await _marketData.GetTickerAsync("BTCUSDT");
+            Assert.NotNull(result);
         }
 
         [Fact]
-        public async Task GetOrderBookVolumes_ShouldReturn_BidAndAskVolumes()
+        public async Task GetFundingRateAsync_Works()
         {
-            var (bidVolume, askVolume) = await _marketData.GetOrderBookVolumesAsync("BTCUSDT");
-            Assert.True(bidVolume >= 0 && askVolume >= 0);
+            var result = await _marketData.GetFundingRateAsync("BTCUSDT");
+            Assert.NotNull(result);
+        }
+              
+
+        [Fact]
+        public async Task GetRecentTradesAsync_Works()
+        {
+            var result = await _marketData.GetRecentTradesAsync("BTCUSDT", null, null, 5);
+            Assert.NotNull(result);
         }
 
         [Fact]
-        public async Task GetTickerList_ShouldReturn_NonEmptyString()
+        public async Task GetLivePriceAsync_Works()
         {
-            var result = await _marketData.GetTickerListAsync();
+            var result = await _marketData.GetLivePriceAsync("BTCUSDT");
+            Assert.True(result > 0);
+        }
+
+        [Fact]
+        public async Task GetVwapAsync_ReturnsValue()
+        {
+            var result = await _marketData.GetVwapAsync("BTCUSDT");
+            Assert.True(result > 0);
+        }
+
+        [Fact]
+        public async Task GetPriceMomentumAsync_ReturnsValue()
+        {
+            var result = await _marketData.GetPriceMomentumAsync("BTCUSDT");
+            Assert.True(result != 0);
+        }
+
+        [Fact]
+        public async Task GetBollingerBandsAsync_ReturnsValidBands()
+        {
+            var (upper, lower) = await _marketData.GetBollingerBandsAsync("BTCUSDT", "1h",20);
+            Assert.True(upper > lower);
+        }
+
+        [Fact]
+        public async Task GetSmaAsync_ReturnsValue()
+        {
+            var result = await _marketData.GetSmaAsync("BTCUSDT");
+            Assert.True(result > 0);
+        }
+
+        [Fact]
+        public async Task GetRsiAsync_ReturnsValue()
+        {
+            var result = await _marketData.GetRsiAsync("BTCUSDT");
+            Assert.InRange(result, 0, 100);
+        }
+
+        [Fact]
+        public async Task DetectCandlePatternAsync_ReturnsPattern()
+        {
+            var result = await _marketData.DetectCandlePatternAsync("BTCUSDT");
             Assert.False(string.IsNullOrWhiteSpace(result));
-        }
-
-        //[Fact]
-        public async Task PlaceIsolatedTradeAsync_ShouldReturn_SuccessfulResponse()
-        {
-            var result = await _marketData.PlaceIsolatedTradeAsync("BTCUSDT", "0.001", "BUY", "MARKET");
-            Assert.True(result.IsSuccessful, $"Error: {result.Content}");
         }
     }
 

@@ -8,13 +8,13 @@ namespace TidyTrader.ApiIntegration.Models.Responses.Account
         public int Code { get; set; }
 
         [JsonProperty("data")]
-        public List<ChangeLeverageResponse> Data { get; set; }
+        public List<ChangeLeverageItem> Data { get; set; }
 
         [JsonProperty("msg")]
         public string Message { get; set; }
     }
 
-    public class ChangeLeverageResponse
+    public class ChangeLeverageItem
     {
         [JsonProperty("marginCoin")]
         public string MarginCoin { get; set; }

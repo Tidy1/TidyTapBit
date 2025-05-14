@@ -193,7 +193,7 @@ namespace TidyTrader.ApiIntegration.Models
             var path = "/api/v1/futures/account/get_leverage_and_margin_mode";
             var queryParams = $"symbol={symbol}&marginCoin={marginCoin}";
 
-            return await SendRequestAsync("GET", path, queryParams, null);
+            return await SendRequestAsync<GetLeverageMarginModeResponse>("GET", path, queryParams, null);
         }
 
         public async Task<ApiResponse<GetSingleAccountResponse>> GetSingleAccountAsync(string marginCoin)
@@ -201,7 +201,7 @@ namespace TidyTrader.ApiIntegration.Models
             var queryParams = $"marginCoin={marginCoin}";
             var path = "/api/v1/futures/account";
 
-            return await SendRequestAsync("GET", path, queryParams, null);
+            return await SendRequestAsync<GetSingleAccountResponse>("GET", path, queryParams, null);
         }
 
         #endregion
@@ -332,7 +332,7 @@ namespace TidyTrader.ApiIntegration.Models
 
             string queryString = string.Join("&", queryParams);
 
-            return await SendRequestAsync("GET", path, queryString, null);
+            return await SendRequestAsync<GetOrderDetailResponse>("GET", path, queryString, null);
         }
 
         public async Task<ApiResponse<GetPendingOrdersResponse>> GetPendingOrdersAsync(string symbol = null, string orderId = null, string clientId = null, string status = null, long? startTime = null, long? endTime = null, long? skip = null, long? limit = null)
@@ -593,6 +593,14 @@ namespace TidyTrader.ApiIntegration.Models
 
         #region Market  
 
+        /// <summary>
+        /// Get market depth data for a specific symbol.
+        /// </summary>
+        /// <param name="symbol"></param>
+        /// <param name="limit"></param>
+        /// <returns></returns>
+        /// <remarks>Fixed gear enumeration value: 1/5/15/50/max,</remarks>
+        /// <exception cref="ArgumentException"></exception>
         public async Task<ApiResponse<MarketDepthResponse>> GetMarketDepthAsync(string symbol, string limit = null)
         {
             if (string.IsNullOrWhiteSpace(symbol))
