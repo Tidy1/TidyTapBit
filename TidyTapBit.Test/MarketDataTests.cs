@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using Xunit;
 using TidyTrader.ApiIntegration.Models;
 using TidyTrader.ApiIntegration.Interfaces;
+using Skender.Stock.Indicators;
+using TidyTapBit.Core.Indicators;
 
 namespace TidyTrader.Tests.ApiIntegration
 {
@@ -29,7 +31,23 @@ namespace TidyTrader.Tests.ApiIntegration
         [Fact]
         public async Task GetKlineDataAsync_Works()
         {
-            var result = await _marketData.GetKlineDataAsync("BTCUSDT", "1m", "200");
+            var result = await _marketData.GetKlineDataAsync("BTCUSDT", "1d", "1000");
+
+            var quotes = result.Data
+                .OrderBy(x => x.Time)
+                .Select(x => new Quote
+                {
+                    Close = x.Close,
+                    High = x.High,
+                    Low = x.Low,
+                    Open = x.Open,
+                    Volume = decimal.Parse(x.BaseVolume),
+                    Date = DateTimeOffset.FromUnixTimeMilliseconds(x.Time).UtcDateTime,
+                });
+
+            var indicatorService = new TechnicalIndicatorService();
+            var results = indicatorService.GetIndicators(quotes);
+
             Assert.NotNull(result);
         }
 
