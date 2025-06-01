@@ -40,7 +40,7 @@ namespace TidyTrader.ApiIntegration.Models
             _baseUrl = baseUrl; // e.g. "wss://fapi.bitunix.com/private/"
         }
 
-        private string GenerateSignature(string timestamp, string nonce)
+        private string GenerateSignature(long timestamp, string nonce)
         {
             using var sha256 = SHA256.Create();
             // first: SHA256(nonce + timestamp + apiKey)
@@ -89,14 +89,23 @@ namespace TidyTrader.ApiIntegration.Models
 
         private async Task AuthenticateAsync()
         {
-            var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
             var sign = GenerateSignature(ts, nonce);
 
             var login = new
             {
                 op = "login",
-                args = new[] { new { apiKey = _apiKey, timestamp = ts, nonce, sign } }
+                args = new[]
+                {
+                    new
+                    {
+                        apiKey = _apiKey,
+                        timestamp = ts,
+                        nonce,
+                        sign
+                    }
+                }
             };
             var msg = JsonConvert.SerializeObject(login);
             Console.WriteLine($"[WS TX] {msg}");
@@ -108,22 +117,55 @@ namespace TidyTrader.ApiIntegration.Models
 
         public async Task SubscribeToBalanceAsync()
         {
+            var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
+            var sign = GenerateSignature(ts, nonce);
+
+
             var sub = new
             {
                 op = "subscribe",
-                args = new[] { new { ch = "position" } }
+                args = new[]
+                {
+                    new
+                    {
+                        ch = "position",
+                        apiKey = _apiKey,
+                        timestamp = ts,
+                        nonce,
+                        sign
+                    }
+                }
             };
             var msg = JsonConvert.SerializeObject(sub);
-            Console.WriteLine($"[WS TX] {msg}");
+            Console.WriteLine($"[WS TX Balance] {msg}");
             var buf = Encoding.UTF8.GetBytes(msg);
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
         public async Task SubscribeToOrderAsync(string symbol = null)
         {
-            var args = new List<object> { new { ch = "order", symbol } };
-            var msgObj = new { op = "subscribe", args = args.ToArray() };
-            var msg = JsonConvert.SerializeObject(msgObj);
+
+            var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
+            var sign = GenerateSignature(ts, nonce);
+
+            var sub = new
+            {
+                op = "subscribe",
+                args = new[]
+                {
+                    new
+                    {
+                        ch = "order",
+                        apiKey = _apiKey,
+                        timestamp = ts,
+                        nonce,
+                        sign
+                    }
+                }
+            };
+            var msg = JsonConvert.SerializeObject(sub);
             Console.WriteLine($"[WS TX] {msg}");
             var buf = Encoding.UTF8.GetBytes(msg);
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
@@ -277,12 +319,13 @@ namespace TidyTrader.ApiIntegration.Models
                 var j = JObject.Parse(message);
 
                 // pong
-                if (j["op"]?.ToString() == "pong")
+                if (j["op"]?.ToString() == "pong" || (j["op"]?.ToString() == "ping" && j["pong"] != null))
                 {
                     var ts = j["pong"]?.ToObject<long>() ?? 0;
                     OnPong?.Invoke(ts);
                     return;
                 }
+
 
                 // connect ack
                 if (j["op"]?.ToString() == "connect")

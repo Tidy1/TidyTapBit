@@ -14,6 +14,8 @@ using TidyTrader.ApiIntegration.Models.Responses.Trade;
 
 namespace TidyTrader.ApiIntegration.Models
 {
+
+
     public class BitunixApiClient : IBitunixApiClient
     {
         private readonly string _apiKey;
