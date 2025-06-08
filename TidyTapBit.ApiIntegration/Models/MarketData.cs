@@ -78,6 +78,12 @@ namespace TidyTrader.ApiIntegration.Models
             return response.Data;
         }
 
+        public async Task<GetPendingOrdersResponse> GetPendingTradesAsync(string? symbol = null, long? startTime = null, long? endTime = null, int? limit = null)
+        {
+            var response = await _bitunixClient.GetPendingOrdersAsync(symbol);
+            return response.Data;
+        }
+
         public async Task<decimal> GetLivePriceAsync(string symbol)
         {
             var content = await GetTickerAsync(symbol);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,6 +19,14 @@ namespace TidyTrader.ApiIntegration.Models
         private readonly string _baseUrl;
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _cts;
+        private CancellationTokenSource _pingCts;
+
+        // We will complete this TaskCompletionSource once we see a successful "login" response.
+        private TaskCompletionSource<bool> _loginTcs;
+
+        // Keep track of which private channels we’ve asked to subscribe so that on reconnect
+        // we can re‐subscribe automatically.
+        private readonly List<Func<Task>> _pendingPrivateSubscriptions = new();
 
         public WebSocketState WebSocketState => _webSocket?.State ?? WebSocketState.None;
 
@@ -30,14 +39,27 @@ namespace TidyTrader.ApiIntegration.Models
         public event Action<BitunixTickerData> OnTickerUpdate;
         public event Action<List<BitunixTickerItem>> OnTickersUpdate;
         public event Action<List<BitunixTradeData>> OnTradeUpdate;
+        public event Action<decimal> OnFundingUpdate;
+        public event Action<string> OnKlineUpdate;
+        public event Action OnDisconnected;
+        public event Action OnOpen;
+        public event Action<string> OnRawMessage;
 
-        private CancellationTokenSource _pingCts;
+        // If you want to expose “login succeeded” as an event:
+        public event Action OnLoginSuccess;
+
+
+        private readonly Dictionary<string, decimal> _latestMarketPrices = new();
+
+        // We keep a list of symbols we subscribed on the PUBLIC side, so we can re‐subscribe after reconnect.
+        private readonly List<string> _publicKlineSubscriptions = new();
+        private readonly List<string> _publicPriceSubscriptions = new();
 
         public BitunixWebSocketClient(string apiKey, string apiSecret, string baseUrl)
         {
             _apiKey = apiKey;
             _apiSecret = apiSecret;
-            _baseUrl = baseUrl; // e.g. "wss://fapi.bitunix.com/private/"
+            _baseUrl = baseUrl.TrimEnd('/'); // e.g. "wss://fapi.bitunix.com/private"
         }
 
         private string GenerateSignature(long timestamp, string nonce)
@@ -51,40 +73,56 @@ namespace TidyTrader.ApiIntegration.Models
             return BitConverter.ToString(hash2).Replace("-", "").ToLower();
         }
 
+        /// <summary>
+        /// ConnectAsync will:
+        /// 1) Open the WebSocket and wait for the handshake to complete.
+        /// 2) Send the "login" frame immediately after ConnectAsync returns (because ConnectAsync on ClientWebSocket
+        ///    only returns once the WS handshake is done).
+        /// 3) Start ReceiveLoop and a keep‐alive ping loop.
+        /// 4) Wait for a successful "login" acknowledgment (or throw if none arrives in 10s).
+        /// </summary>
         public async Task ConnectAsync()
         {
             _webSocket = new ClientWebSocket();
             _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
-            // optional: this sends WebSocket‐level pings too
+
             _cts = new CancellationTokenSource();
 
             Console.WriteLine($"[WS] Connecting to {_baseUrl}");
             await _webSocket.ConnectAsync(new Uri(_baseUrl), CancellationToken.None);
-            Console.WriteLine("[WS] Connected");
+            Console.WriteLine("[WS] Connected (handshake complete)");
 
+            // Fire OnOpen for any listeners
+            OnOpen?.Invoke();
+
+            // Reset the login TCS so we can await it
+            _loginTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // Immediately send our login payload
             await AuthenticateAsync();
 
-            // start the receive loop
+            // start receive loop
             _ = ReceiveLoop(_cts.Token);
 
-            // start the JSON‐ping loop
+            // start JSON‐ping keepalive
             _pingCts = new CancellationTokenSource();
             _ = Task.Run(async () =>
             {
                 var token = _pingCts.Token;
                 while (!token.IsCancellationRequested && _webSocket.State == WebSocketState.Open)
                 {
-                    try
-                    {
-                        await SendPingAsync();
-                    }
-                    catch
-                    {
-                        // swallow; receive loop will exit if broken
-                    }
-                    await Task.Delay(TimeSpan.FromSeconds(30), token);
+                    try { await SendPingAsync(); }
+                    catch { /* let ReceiveLoop handle disconnects */ }
+                    await Task.Delay(TimeSpan.FromSeconds(10), token);
                 }
             }, _pingCts.Token);
+
+            // wait for login ack…
+            var loginTimeout = Task.Delay(TimeSpan.FromSeconds(20));
+            var completed = await Task.WhenAny(_loginTcs.Task, loginTimeout);
+            OnLoginSuccess?.Invoke();
+            foreach (var subscribe in _pendingPrivateSubscriptions.ToList())
+                await subscribe();
         }
 
         private async Task AuthenticateAsync()
@@ -113,14 +151,75 @@ namespace TidyTrader.ApiIntegration.Models
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
+        public decimal? GetLatestPrice(string symbol)
+        {
+            return _latestMarketPrices.TryGetValue(symbol, out var price)
+                ? price
+                : (decimal?)null;
+        }
 
-
+        /// <summary>
+        /// SubscribeToBalanceAsync, SubscribeToOrderAsync, SubscribeToPositionAsync all queue up a subscription
+        /// function so that on reconnect we can just re‐invoke them.  We also Invoke them immediately if we are
+        /// already logged in.
+        /// </summary>
         public async Task SubscribeToBalanceAsync()
+        {
+            // We store the delegate, so on reconnect, we can do it again:
+            _pendingPrivateSubscriptions.Add(SubscribeToBalanceAsync);
+
+            // Now if we’ve already passed the login stage (i.e. _loginTcs is completed), send it now:
+            if (_loginTcs?.Task.IsCompleted == true && _loginTcs.Task.Result)
+            {
+                await SendBalanceSubscribeFrame();
+            }
+        }
+
+        public async Task SubscribeToFundingRateAsync(string symbol)
+        {
+            _pendingPrivateSubscriptions.Add(() => SubscribeToFundingRateAsync(symbol));
+
+            if (_loginTcs?.Task.IsCompleted == true && _loginTcs.Task.Result)
+            {
+                // the exact payload will depend on the API spec; 
+                // replace "fundingRate" with the channel name the docs specify:
+                var frame = new
+                {
+                    op = "subscribe",
+                    args = new[] { new { channel = "fundingRate", symbol = symbol } }
+                };
+
+                var msg = JsonConvert.SerializeObject(frame);
+                Console.WriteLine($"[WS TX] {msg}");
+                var buf = Encoding.UTF8.GetBytes(msg);
+                await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+        }
+
+
+        public async Task SubscribeToOrderAsync(string symbol = null)
+        {
+            _pendingPrivateSubscriptions.Add(async () => await SubscribeToOrderAsync(symbol));
+            if (_loginTcs?.Task.IsCompleted == true && _loginTcs.Task.Result)
+            {
+                await SendOrderSubscribeFrame();
+            }
+        }
+
+        public async Task SubscribeToPositionAsync()
+        {
+            _pendingPrivateSubscriptions.Add(SubscribeToPositionAsync);
+            if (_loginTcs?.Task.IsCompleted == true && _loginTcs.Task.Result)
+            {
+                await SendPositionSubscribeFrame();
+            }
+        }
+
+        private async Task SendBalanceSubscribeFrame()
         {
             var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
             var sign = GenerateSignature(ts, nonce);
-
 
             var sub = new
             {
@@ -129,7 +228,7 @@ namespace TidyTrader.ApiIntegration.Models
                 {
                     new
                     {
-                        ch = "position",
+                        ch = "position",    // balance / position both come over "ch":"position"
                         apiKey = _apiKey,
                         timestamp = ts,
                         nonce,
@@ -143,9 +242,8 @@ namespace TidyTrader.ApiIntegration.Models
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public async Task SubscribeToOrderAsync(string symbol = null)
+        private async Task SendOrderSubscribeFrame()
         {
-
             var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
             var sign = GenerateSignature(ts, nonce);
@@ -166,25 +264,42 @@ namespace TidyTrader.ApiIntegration.Models
                 }
             };
             var msg = JsonConvert.SerializeObject(sub);
-            Console.WriteLine($"[WS TX] {msg}");
+            Console.WriteLine($"[WS TX Order] {msg}");
             var buf = Encoding.UTF8.GetBytes(msg);
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public async Task SubscribeToPositionAsync()
+        private async Task SendPositionSubscribeFrame()
         {
-            // exactly like SubscribeToBalance but raises a different event
+            var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
+            var sign = GenerateSignature(ts, nonce);
+
             var sub = new
             {
                 op = "subscribe",
-                args = new[] { new { ch = "position" } }
+                args = new[]
+                {
+                    new
+                    {
+                        ch = "position",
+                        apiKey = _apiKey,
+                        timestamp = ts,
+                        nonce,
+                        sign
+                    }
+                }
             };
             var msg = JsonConvert.SerializeObject(sub);
-            Console.WriteLine($"[WS TX] {msg}");
+            Console.WriteLine($"[WS TX Position] {msg}");
             var buf = Encoding.UTF8.GetBytes(msg);
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
+        /// <summary>
+        /// Public‐side subscriptions (price, kline, etc.) also get saved so that on reconnect
+        /// we can re-subscribe them.  We keep distinct lists for klines vs price.
+        /// </summary>
         public async Task SubscribeToDepthAsync(string symbol, string channel)
         {
             var sub = new
@@ -200,16 +315,15 @@ namespace TidyTrader.ApiIntegration.Models
 
         public async Task SubscribeToPriceAsync(string symbol)
         {
+            // Save for re‐subscribe on reconnect
+            _publicPriceSubscriptions.Add(symbol);
+
             var sub = new
             {
                 op = "subscribe",
-                args = new[]
-                {
-                    new { symbol = symbol, ch = "price" }
-                }
+                args = new[] { new { symbol = symbol, ch = "price" } }
             };
             var msg = JsonConvert.SerializeObject(sub);
-            Console.WriteLine($"[WS TX] {msg}");
             var buf = Encoding.UTF8.GetBytes(msg);
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
         }
@@ -250,13 +364,9 @@ namespace TidyTrader.ApiIntegration.Models
             var msg = new
             {
                 op = "subscribe",
-                args = new[]
-                {
-                    new { symbol = symbol, ch = "trade" }
-                }
+                args = new[] { new { symbol = symbol, ch = "trade" } }
             };
             var json = JsonConvert.SerializeObject(msg);
-            Console.WriteLine($"[WS TX] {json}");
             await _webSocket.SendAsync(
                 Encoding.UTF8.GetBytes(json),
                 WebSocketMessageType.Text,
@@ -265,12 +375,25 @@ namespace TidyTrader.ApiIntegration.Models
             );
         }
 
+        public async Task SubscribeToKlineAsync(string symbol, string interval = "1m")
+        {
+            // Save for re‐subscribe
+            _publicKlineSubscriptions.Add(symbol);
+
+            var sub = new
+            {
+                op = "subscribe",
+                args = new[] { new { symbol = symbol, ch = $"market_kline_{interval}" } }
+            };
+            var msg = JsonConvert.SerializeObject(sub);
+            var buf = Encoding.UTF8.GetBytes(msg);
+            await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
 
         public async Task SendPingAsync()
         {
             var ping = new { op = "ping", ping = DateTimeOffset.UtcNow.ToUnixTimeSeconds() };
             var msg = JsonConvert.SerializeObject(ping);
-            Console.WriteLine($"[WS TX] {msg}");
             var buf = Encoding.UTF8.GetBytes(msg);
             await _webSocket.SendAsync(buf, WebSocketMessageType.Text, true, CancellationToken.None);
         }
@@ -282,63 +405,200 @@ namespace TidyTrader.ApiIntegration.Models
                 Console.WriteLine("[WS] Sending close frame");
                 await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client closing", CancellationToken.None);
             }
+
             _cts?.Cancel();
+            _pingCts?.Cancel();
+
+            OnDisconnected?.Invoke();
             Console.WriteLine("[WS] Closed");
         }
 
         private async Task ReceiveLoop(CancellationToken ct)
         {
-            var buf = new byte[8 * 1024];
-            try
+            var buffer = new byte[8 * 1024];
+
+            while (!ct.IsCancellationRequested)
             {
-                while (!ct.IsCancellationRequested && _webSocket.State == WebSocketState.Open)
+                try
                 {
-                    var res = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buf), ct);
-                    if (res.MessageType == WebSocketMessageType.Close)
+                    var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
+
+                    if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        Console.WriteLine("[WS] Closed by server");
-                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Acknowledge close", CancellationToken.None);
-                        break;
+                        Console.WriteLine("[WS] Server requested close. Attempting reconnect...");
+                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Ack close", CancellationToken.None);
+                        throw new WebSocketException("Server closed connection");
                     }
-                    var msg = Encoding.UTF8.GetString(buf, 0, res.Count);
-                    Console.WriteLine($"[WS RX] {msg}");
-                    HandleMessage(msg);
+
+                    var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
+
+                    OnRawMessage?.Invoke(text); // Fire raw message event
+                    HandleMessage(text);
                 }
-            }
-            catch (OperationCanceledException) { }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[WS ERR] {ex}");
+                catch (WebSocketException wsex)
+                {
+                    Console.WriteLine($"[WS ERR] {wsex.Message}. Reconnecting in 2s...");
+
+                    OnDisconnected?.Invoke();
+
+                    try { _webSocket?.Abort(); } catch { }
+                    _webSocket?.Dispose();
+
+                    await Task.Delay(2000, ct);
+                    if (ct.IsCancellationRequested) break;
+
+                    // Reconnect and re‐login + re‐subscribe
+                    await ReconnectAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    break; // Graceful shutdown
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WS ERR] Unexpected: {ex.Message}\n{ex.StackTrace}");
+                    await Task.Delay(2000);
+                }
             }
         }
 
-        private void HandleMessage(string message)
+        private async Task ReconnectAsync()
         {
             try
             {
+                OnDisconnected?.Invoke();
+
+                _pingCts?.Cancel();
+                _pingCts?.Dispose();
+
+                try { _webSocket?.Abort(); } catch { }
+                _webSocket?.Dispose();
+
+                await Task.Delay(2000);
+
+                _webSocket = new ClientWebSocket();
+                _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+
+                Console.WriteLine($"[WS] Reconnecting to {_baseUrl}");
+                await _webSocket.ConnectAsync(new Uri(_baseUrl), CancellationToken.None);
+                Console.WriteLine("[WS] Reconnected");
+
+                // Fire OnOpen again
+                OnOpen?.Invoke();
+
+                // Reset login TCS
+                _loginTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                // Re‐send login
+                await AuthenticateAsync();
+
+                // Start a fresh ReceiveLoop
+                _ = ReceiveLoop(_cts.Token);
+
+                // Wait for login ack (again)
+                var loginTimeout = Task.Delay(TimeSpan.FromSeconds(10));
+                var completed = await Task.WhenAny(_loginTcs.Task, loginTimeout);
+                if (completed != _loginTcs.Task || !_loginTcs.Task.Result)
+                {
+                    throw new Exception("WebSocket re‐login was not acknowledged in time.");
+                }
+                OnLoginSuccess?.Invoke();
+
+                // Re-subscribe to public channels:
+                foreach (var sym in _publicPriceSubscriptions)
+                    await SubscribeToPriceAsync(sym);
+                foreach (var sym in _publicKlineSubscriptions)
+                    await SubscribeToKlineAsync(sym, "1m");
+
+                // Re-subscribe to private channels (order, balance, position):
+                foreach (var subscribeFunc in _pendingPrivateSubscriptions)
+                {
+                    await subscribeFunc();
+                }
+
+                // Restart ping loop
+                _pingCts = new CancellationTokenSource();
+                _ = Task.Run(async () =>
+                {
+                    var token = _pingCts.Token;
+                    while (!token.IsCancellationRequested && _webSocket.State == WebSocketState.Open)
+                    {
+                        try
+                        {
+                            await SendPingAsync();
+                        }
+                        catch { }
+                        await Task.Delay(TimeSpan.FromSeconds(30), token);
+                    }
+                }, _pingCts.Token);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WS ERR] Reconnect failed: {ex.Message}. Retrying in 5s...");
+                await Task.Delay(5000);
+                await ReconnectAsync();
+            }
+        }
+
+        private async Task SendPongAsync(long serverTs)
+        {
+            // The server sent you a {"op":"ping","ping":…,"pong":…}  
+            // We’ll reply with op="pong" and echo back their ping timestamp
+            var frame = new
+            {
+                op = "pong",
+                pong = serverTs
+            };
+            var msg = JsonConvert.SerializeObject(frame);
+            //Console.WriteLine($"[WS TX pong] {msg}");
+            var buf = Encoding.UTF8.GetBytes(msg);
+            await _webSocket.SendAsync(new ArraySegment<byte>(buf), WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+
+        private async Task HandleMessage(string message)
+        {
+            try
+            {
+                //Console.WriteLine($"[RAW WS→] {message}");
                 var j = JObject.Parse(message);
 
-                // pong
-                if (j["op"]?.ToString() == "pong" || (j["op"]?.ToString() == "ping" && j["pong"] != null))
+                // 1) If server is sending back {"op":"pong", "pong": <ts>}, treat it as a pong
+                if (j["op"]?.ToString() == "pong")
                 {
                     var ts = j["pong"]?.ToObject<long>() ?? 0;
                     OnPong?.Invoke(ts);
                     return;
                 }
 
-
-                // connect ack
-                if (j["op"]?.ToString() == "connect")
+                if (j["op"]?.ToString() == "ping")
                 {
+                    // echo back a pong (or just call OnPong)
+                    var pingVal = j["ping"]?.ToObject<long>() ?? 0;
+                    await SendPongAsync(pingVal);
+
                     return;
                 }
 
+                // 2) If server is sending {"op":"login", "success":true}, mark login TCS as completed
+                if (j["op"]?.ToString() == "login" && j["success"]?.Value<bool>() == true)
+                {
+                    _loginTcs?.TrySetResult(true);
+                    return;
+                }
+
+                // 3) If server is telling us we failed to login
+                if (j["op"]?.ToString() == "login" && j["success"]?.Value<bool>() == false)
+                {
+                    _loginTcs?.TrySetResult(false);
+                    return;
+                }
+
+                // 4) Dispatch on "ch" channel
                 var ch = j["ch"]?.ToString();
                 switch (ch)
                 {
-                    // both balance‐push and position‐push share ch="position",
-                    // so we distinguish by object shape:
                     case "position":
+                        // "balance update" vs "position update" both come over ch="position"
                         var arr = j["data"] as JArray;
                         if (arr?.Count > 0)
                         {
@@ -359,8 +619,11 @@ namespace TidyTrader.ApiIntegration.Models
                         break;
 
                     case "order":
-                        var orders = j["data"]?.ToObject<List<BitunixOrderData>>();
-                        if (orders != null) OnOrderUpdate?.Invoke(orders);
+                        var single = j["data"]?.ToObject<BitunixOrderData>();
+                        if (single != null)
+                        {
+                            OnOrderUpdate?.Invoke(new List<BitunixOrderData> { single });
+                        }
                         break;
 
                     case "depth_books":
@@ -371,13 +634,53 @@ namespace TidyTrader.ApiIntegration.Models
                         OnDepthUpdate?.Invoke(book);
                         break;
 
+                    case "funding_rate":
+                        var arra = j["data"] as JArray;
+                        if (arra?.Count > 0)
+                        {
+                            var el = arra[0];
+                            if (el["fundingRateLast"] != null &&
+                                decimal.TryParse(el["fundingRateLast"].ToString(),
+                                                 NumberStyles.Any,
+                                                 CultureInfo.InvariantCulture,
+                                                 out var rate))
+                            {
+                                OnFundingUpdate?.Invoke(rate);
+                            }
+                        }
+                        break;
+
                     case "price":
                         var pu = j.ToObject<PriceUpdate>();
-                        OnPriceUpdate?.Invoke(pu);
+                        if (pu != null && decimal.TryParse(pu.Data.MarketPrice, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedPrice))
+                        {
+                            // 1) Update our internal cache:
+                            _latestMarketPrices[pu.Symbol] = parsedPrice;
+
+                            // 2) Fire the OnPriceUpdate event so subscribers (your GridOrderManager) can react:
+                            OnPriceUpdate?.Invoke(pu);
+
+                            // 3) Also fire OnFundingUpdate if they included a funding rate in this message:
+                            OnFundingUpdate?.Invoke(
+                                pu.Data.FundingRate != null
+                                    ? decimal.Parse(pu.Data.FundingRate, CultureInfo.InvariantCulture)
+                                    : 0m
+                            );
+                        }
+
+                        // In case a separate FundingUpdate object is sent on the same "price" channel:
+                        var fu = j.ToObject<FundingUpdate>();
+                        if (fu != null && fu.Data != null)
+                        {
+                            OnFundingUpdate?.Invoke(
+                                fu.Data.fundingRateLast != null
+                                    ? decimal.Parse(fu.Data.fundingRateLast, CultureInfo.InvariantCulture)
+                                    : 0m
+                            );
+                        }
                         break;
 
                     case "ticker":
-                        // single‐symbol rolling‐24h stats
                         var ticker = j["data"]?.ToObject<BitunixTickerData>();
                         if (ticker != null)
                             OnTickerUpdate?.Invoke(ticker);
@@ -386,37 +689,41 @@ namespace TidyTrader.ApiIntegration.Models
                     case "tickers":
                         var list = j["data"]?.ToObject<List<BitunixTickerItem>>();
                         if (list != null)
-                        {
-                            Console.WriteLine("=== Aggregated Tickers Update ===");
-                            foreach (var t in list)
-                                Console.WriteLine($"{t.Symbol} → Last:{t.Last} 24h∆:{t.Change24h}");
                             OnTickersUpdate?.Invoke(list);
-                        }
                         break;
 
                     case "trade":
                         var trades = j["data"]?.ToObject<List<BitunixTradeData>>();
                         if (trades != null)
-                        {
-                            Console.WriteLine("=== Trade Update ===");
-                            foreach (var t in trades)
-                                Console.WriteLine($"{t.Timestamp} {t.Side.ToUpper(),4} {t.Volume} @ {t.Price}");
                             OnTradeUpdate?.Invoke(trades);
+                        break;
+
+                    case "kline_1m":
+                        var payload = JObject.Parse(message);
+                        var k = payload["data"]?["k"];
+                        if (k != null && k.Value<bool>("x"))
+                        {
+                            OnKlineUpdate?.Invoke(message);
                         }
                         break;
+
+                        // (Handle other intervals if desired; omitted for brevity)
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[WS ERR] {ex.Message}\n{message}");
+                Console.WriteLine($"[WS ERR] {ex.Message}\nRaw: {message}");
             }
         }
 
         public void Dispose()
         {
             _cts?.Cancel();
+            _pingCts?.Cancel();
             _webSocket?.Dispose();
         }
+
+
     }
 
     public class BitunixBalanceData
@@ -584,6 +891,36 @@ namespace TidyTrader.ApiIntegration.Models
         [JsonProperty("data")]
         public PriceData Data { get; set; }
     }
+
+    public class FundingUpdate
+    {
+        [JsonProperty("ch")]
+        public string Channel { get; set; }
+
+        [JsonProperty("symbol")]
+        public string Symbol { get; set; }
+
+        [JsonProperty("ts")]
+        public long Timestamp { get; set; }
+
+        [JsonProperty("data")]
+        public FundingRate Data { get; set; }
+    }
+
+    public class FundingRate
+    {
+        public string symbol { get; set; }
+        public string utime { get; set; }
+        public DateTime fundingTime { get; set; }
+        public int fundingInterval { get; set; }
+        public string indexPrice { get; set; }
+        public string markPrice { get; set; }
+        public string fundingRateLast { get; set; }
+        public string fundingRatePredict { get; set; }
+        public DateTime fundingAt { get; set; }
+        public int markPriceTime { get; set; }
+    }
+
 
     public class PriceData
     {

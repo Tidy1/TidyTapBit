@@ -38,7 +38,7 @@ namespace TidyTrader.ApiIntegration.Models.Responses.Account
         public int Code { get; set; }
 
         [JsonProperty("data")]
-        public List<AccountInfo> Data { get; set; }
+        public AccountInfo Data { get; set; }
 
         [JsonProperty("msg")]
         public string Message { get; set; }

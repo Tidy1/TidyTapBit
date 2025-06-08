@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 
 using System.Diagnostics;
 
-using TidyTapBit.Website.Models;
+using TidyTrader.Website.Models;
+
+
 
 namespace TidyTrader.Website.Controllers
 {

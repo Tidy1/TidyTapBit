@@ -9,22 +9,22 @@ namespace TidyTrader.Website.Services
 
         public WebSocketHostedService(IEnumerable<BitunixWebSocketClient> wsClients)
         {
-            _publicWsClient = wsClients.First(client => client._baseUrl.Contains("public"));
-            _privateWsClient = wsClients.First(client => client._baseUrl.Contains("private"));
+            //_publicWsClient = wsClients.First(client => client._baseUrl.Contains("public"));
+            //_privateWsClient = wsClients.First(client => client._baseUrl.Contains("private"));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await _publicWsClient.ConnectAsync();
-            await _publicWsClient.SubscribeAsync(
-                ("HBARUSDT", "depth_books")
-            );
+            //await _publicWsClient.ConnectAsync();
+            //await _publicWsClient.SubscribeAsync(
+            //    ("HBARUSDT", "depth_books")
+            //);
 
-            await _privateWsClient.ConnectAsync();
-            await _privateWsClient.SubscribeAsync(
-                ("BTCUSDT", "user_orders"),
-                ("BTCUSDT", "user_trades")
-            );
+            //await _privateWsClient.ConnectAsync();
+            //await _privateWsClient.SubscribeAsync(
+            //    ("BTCUSDT", "user_orders"),
+            //    ("BTCUSDT", "user_trades")
+            //);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

@@ -8,6 +8,59 @@ using System.Net.WebSockets;
 
 namespace TidyTrader.Tests
 {
+    public class BitunixApiClientTests
+    {
+        private readonly string _apiKey = "dd9ac82aaedec750922f3e6fc5438816";
+        private readonly string _apiSecret = "4ac673c254b5affa65549a2ed5f25c76";
+
+        [Fact]
+        public async Task PlaceOrderAsync_ShouldReturnSuccessOrFailGracefully()
+        {
+            // Arrange
+            var client = new BitunixApiClient(_apiKey, _apiSecret);
+            string symbol = "BTCUSDT";
+            string testClientId = Guid.NewGuid().ToString();
+
+            // Act
+            var response = await client.PlaceOrderAsync(
+                symbol: symbol,
+                qty: "0.0012",
+                side: "BUY",
+                tradeSide: "OPEN",
+                orderType: "LIMIT",
+                price: "104000",
+                effect: "GTC",
+                clientId: testClientId,
+                positionId:"1111",
+                reduceOnly: false,
+                tpPrice: null,
+                tpStopType: null,
+                tpOrderType: null,
+                tpOrderPrice: null,
+                slPrice: null,
+                slStopType: null,
+                slOrderType: null,
+                slOrderPrice: null
+            );
+
+            // Assert
+            Assert.NotNull(response);
+
+            if (response.Data != null)
+            {
+                Assert.True(response.Data.Code == 0 || response.Data.Data?.OrderId == null,
+                    $"API returned: Code={response.Data.Code}, Message={response.Data.Message}");
+            }
+            else
+            {
+                Assert.False(string.IsNullOrEmpty(response.Data.Data.ToString()), "API response was completely empty.");
+            }
+
+            // Optional logging
+            Console.WriteLine("Raw Response:");
+            Console.WriteLine(response.Data.Data.ToString());
+        }
+    }
     public class WebSocketTests
     {
         private readonly string _apiKey;

@@ -64,12 +64,20 @@ namespace TidyTrader.Tests.ApiIntegration
             var result = await _marketData.GetFundingRateAsync("BTCUSDT");
             Assert.NotNull(result);
         }
-              
+
+        [Fact]
+        public async Task GetPendingTradesAsync_Works()
+        {
+            var result = await _marketData.GetPendingTradesAsync("BTCUSDT");
+            Assert.NotNull(result);
+        }
+
 
         [Fact]
         public async Task GetRecentTradesAsync_Works()
         {
-            var result = await _marketData.GetRecentTradesAsync("BTCUSDT", null, null, 5);
+            var start = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeMilliseconds();
+            var result = await _marketData.GetRecentTradesAsync("BTCUSDT", start, null, 100);
             Assert.NotNull(result);
         }
 

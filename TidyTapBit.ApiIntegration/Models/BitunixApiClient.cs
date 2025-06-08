@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using RestSharp;
 
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -34,7 +36,7 @@ namespace TidyTrader.ApiIntegration.Models
             var fullPath = path + (string.IsNullOrWhiteSpace(queryParams) ? "" : $"?{queryParams}");
             var request = new RestRequest(fullPath, method == "GET" ? Method.Get : Method.Post);
 
-            string timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(); // as string
             string nonce = Guid.NewGuid().ToString("N").Substring(0, 32);
 
             string compactBody = (body != null && method != "GET")
@@ -42,15 +44,22 @@ namespace TidyTrader.ApiIntegration.Models
                 : "";
 
             string sortedQueryParams = FlattenQueryParams(queryParams);
+
+            // ❌ Do NOT trim this line!
             string digestInput = $"{nonce}{timestamp}{_apiKey}{sortedQueryParams}{compactBody}";
-            string digest = Sha256Hex(digestInput.Trim());
+
+            // Apply first SHA256
+            string digest = Sha256Hex(digestInput);
+
+            // Apply second SHA256 with secret
             string signature = Sha256Hex(digest + _apiSecret);
+
 
             request.AddOrUpdateHeader("api-key", _apiKey);
             request.AddOrUpdateHeader("sign", signature);
             request.AddOrUpdateHeader("nonce", nonce);
             request.AddOrUpdateHeader("timestamp", timestamp);
-            request.AddOrUpdateHeader("language", "en-US");
+            //request.AddOrUpdateHeader("language", "en-US");
             request.AddOrUpdateHeader("Content-Type", "application/json");
 
             if (method != "GET" && !string.IsNullOrEmpty(compactBody))
@@ -98,13 +107,12 @@ namespace TidyTrader.ApiIntegration.Models
                 .Select(kv =>
                 {
                     var parts = kv.Split('=', 2);
-                    var key = parts[0];
-                    var value = parts.Length > 1 ? parts[1] : "";
-                    return key + value;
+                    return parts[0] + (parts.Length > 1 ? parts[1] : "");
                 })
-                .OrderBy(s => s, StringComparer.Ordinal)
+                .OrderBy(kv => kv, StringComparer.Ordinal)
             );
         }
+
 
         private static string Sha256Hex(string input)
         {
@@ -115,6 +123,25 @@ namespace TidyTrader.ApiIntegration.Models
 
 
         #region Account
+        public async Task<decimal> GetUsdtAvailableAsync()
+        {
+            var resp = await GetSingleAccountAsync("USDT");
+
+            // Check for success and non-null Data
+            if (resp != null && resp.IsSuccessStatusCode && resp.Data != null && resp.Data.Data != null)
+            {
+                decimal.TryParse(resp.Data.Data.Available, out decimal availableBalance);
+                return availableBalance;
+            }
+
+            // Optionally log error details for debugging
+            if (resp != null && !resp.IsSuccessStatusCode)
+            {
+                // Log resp.ErrorMessage or resp.ErrorException as needed
+            }
+
+            return 0m;
+        }
 
 
         public async Task<ApiResponse<AdjustPositionMarginResponse>> AdjustPositionMarginAsync(string marginCoin, string symbol, decimal amount, string side = null, string positionId = null)
@@ -209,6 +236,8 @@ namespace TidyTrader.ApiIntegration.Models
         #endregion
 
         #region Trade
+
+      
 
         public async Task<ApiResponse<BatchOrderResponse>> BatchOrdersAsync(string symbol, string marginCoin, IEnumerable<object> orderDataList)
         {
@@ -417,9 +446,8 @@ namespace TidyTrader.ApiIntegration.Models
             if (!string.IsNullOrWhiteSpace(slOrderType)) bodyObj["slOrderType"] = slOrderType;
             if (!string.IsNullOrWhiteSpace(slOrderPrice)) bodyObj["slOrderPrice"] = slOrderPrice;
 
-            string bodyJson = JsonConvert.SerializeObject(bodyObj, Formatting.None);
-
-            return await SendRequestAsync<PlaceOrderResponse>("POST", path, "", bodyJson);
+            // ✅ Pass the object, not the serialized string
+            return await SendRequestAsync<PlaceOrderResponse>("POST", path, "", bodyObj);
         }
 
 
